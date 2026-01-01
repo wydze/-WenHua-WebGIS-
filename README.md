@@ -730,7 +730,7 @@ export const SERVER_URL = 'http://localhost:3000';
 如有问题或建议，请通过以下方式联系：
 
 - 提交 Issue
-- 发送邮件
+- 发送邮件至2023302131244@whu.edu.cn
 
 ## 🙏 致谢
 
@@ -745,5 +745,6 @@ export const SERVER_URL = 'http://localhost:3000';
 ---
 
 **文化星云** - 让中华文明在数字世界中闪耀 ✨
+
 
 
