@@ -1,0 +1,17 @@
+{
+  "name": "wenhua-webgis-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
+    "nanoid": "^5.0.2",
+    "neo4j-driver": "^6.0.1",
+    "pg": "^8.11.3"
+  }
+}
