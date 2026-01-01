@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文化星云 | 舆图</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
+  
+  <!-- Leaflet 依赖 -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-imageoverlay-rotated@0.2.4/Leaflet.ImageOverlay.Rotated.min.js"></script>
+
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <style>
+      /* 强制地图容器铺满 */
+      #main-map { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; background: #050505; }
+
+      /* Leaflet 弹窗：恢复默认浅色（接近 Leaflet 原生样式），仅修复溢出问题 */
+      #main-map .leaflet-popup-content-wrapper {
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        color: #111827; /* gray-900 */
+        font-family: "Noto Serif SC", serif;
+      }
+      #main-map .leaflet-popup-content {
+        margin: 10px 12px;
+        width: 200px;           /* 固定内容区宽度，避免内容把弹窗撑爆 */
+        max-width: 200px;
+        box-sizing: border-box;
+        overflow: hidden;        /* 防止子元素溢出边框 */
+      }
+      /* 弹窗内文字与按钮的溢出处理 */
+      #main-map .leaflet-popup-content * {
+        box-sizing: border-box;
+        max-width: 100%;
+      }
+      #main-map .leaflet-popup-content b,
+      #main-map .leaflet-popup-content .font-bold {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #main-map .leaflet-popup-content button {
+        display: block;
+        width: 100%;
+      }
+      #main-map .leaflet-popup-tip {
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-top: none;
+        border-left: none;
+      }
+      #main-map .leaflet-container a.leaflet-popup-close-button {
+        color: rgba(0, 0, 0, 0.55);
+      }
+      #main-map .leaflet-container a.leaflet-popup-close-button:hover {
+        color: rgba(0, 0, 0, 0.85);
+      }
+  </style>
+</head>
+<body class="page-shell overflow-hidden">
+  
+  <!-- 1. 统一导航栏 -->
+  <nav class="fixed top-0 w-full z-50 border-b border-white/10 bg-black/40 backdrop-blur-md interactive">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="./home.html" class="flex items-center gap-3">
+        <i class="fas fa-solar-system text-yellow-500 animate-spin-slow" style="animation-duration: 10s"></i>
+        <span class="font-serif-sc text-xl font-bold tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-yellow-100 to-yellow-600">文化星云</span>
+      </a>
+      <div class="hidden md:flex items-center gap-6">
+        <!-- 搜索栏 -->
+        <div id="search-container" class="relative">
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="搜索文化实体..." 
+            class="bg-black/40 border border-white/20 text-white text-sm px-4 py-2 pl-10 rounded-lg focus:outline-none focus:border-yellow-400 w-80 transition-all"
+          />
+          <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          <!-- 搜索结果下拉框 -->
+          <div id="search-results" class="custom-scrollbar absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl max-h-96 overflow-y-auto hidden z-50"></div>
+          <!-- 热点推送 -->
+          <div id="hot-items" class="custom-scrollbar absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-yellow-500/30 rounded-lg shadow-2xl p-4 max-h-96 overflow-y-auto hidden z-50">
+            <div id="hot-items-list" class="space-y-2"></div>
+          </div>
+        </div>
+        <div class="flex space-x-8">
+        <a href="./home.html" class="text-sm text-gray-300 hover:text-yellow-400 transition font-serif-sc tracking-wider">星云 · 漫游</a>
+        <a href="./map.html" class="text-sm text-yellow-400 font-serif-sc tracking-wider">地图 · 舆图</a>
+        <a href="./user.html" class="text-sm text-gray-300 hover:text-yellow-400 transition font-serif-sc tracking-wider">我的 · 空间</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="w-full h-full relative">
+    <div id="main-map"></div>
+
+    <!-- 2. 新增：左侧工具停靠栏 (Dock) -->
+    <div id="map-dock" class="fixed left-4 top-24 bottom-8 w-14 flex flex-col gap-4 z-[1000] pointer-events-auto">
+        <!-- 图层控制 -->
+        <button class="dock-btn active" data-target="panel-layer" title="图层管理">
+            <i class="fas fa-layer-group"></i>
+        </button>
+        <!-- 历史舆图 -->
+        <button class="dock-btn" data-target="panel-overlay" title="历史舆图">
+            <i class="fas fa-scroll"></i>
+        </button>
+        <!-- 路线规划 -->
+        <button class="dock-btn" data-target="panel-route" title="路线规划">
+            <i class="fas fa-route"></i>
+        </button>
+        <!-- 分析工具 -->
+        <button class="dock-btn" data-target="panel-tools" title="分析工具">
+            <i class="fas fa-chart-area"></i>
+        </button>
+        
+        <div class="flex-grow"></div>
+        
+        <!-- 要求1：深色模式切换 (集成在Dock下方) -->
+        <button id="dock-theme-btn" class="dock-btn" title="切换深色/浅色模式">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <!-- 3. 左侧悬浮面板容器 -->
+    <div class="map-sidebar-container custom-scrollbar" id="sidebar-container">
+      
+      <!-- 面板 A: 图层管理 -->
+      <div class="map-panel" id="panel-layer">
+        <div class="map-panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
+          <span class="map-panel-title"><i class="fas fa-layer-group text-blue-400"></i>图层管理</span>
+          <i class="fas fa-chevron-down text-gray-500 transition-transform duration-300"></i>
+        </div>
+        <div class="map-panel-content">
+          <div class="text-[10px] text-gray-500 font-tech mb-2 tracking-widest">朝代筛选</div>
+          <div id="layer-control-dynasty" class="space-y-1"></div>
+          
+          <div class="text-[10px] text-gray-500 font-tech mt-4 mb-2 tracking-widest">实体类型</div>
+          <div id="layer-control-type" class="space-y-1"></div>
+        </div>
+      </div>
+
+      <!-- 面板 B: 历史舆图叠加 (已修改优化) -->
+      <div class="map-panel hidden" id="panel-overlay">
+        <div class="map-panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
+          <span class="map-panel-title"><i class="fas fa-scroll text-yellow-500"></i>历史舆图叠加</span>
+          <i class="fas fa-chevron-down text-gray-500 transition-transform duration-300"></i>
+        </div>
+        <div class="map-panel-content">
+          <!-- 透明度控制 (通用) -->
+          <div class="mb-4 space-y-2 border-b border-gray-700 pb-4">
+            <div class="flex justify-between text-xs text-gray-400">
+              <span>图层不透明度</span>
+              <span id="overlay-opacity-val">50%</span>
+            </div>
+            <input type="range" id="overlay-opacity" min="0" max="1" step="0.1" value="0.5" class="custom-range">
+          </div>
+          
+          <!-- 矢量加载提示 -->
+          <div id="vector-loading" class="hidden text-xs text-yellow-500 mt-2 flex items-center gap-2">
+            <i class="fas fa-circle-notch fa-spin"></i> 正在加载矢量数据...
+          </div>
+
+          <!-- 新增：优化后的配准工具箱 (无旋转，优化按钮) -->
+          <div id="geo-ref-tools" class="mt-4 border-t border-white/10 pt-4 hidden">
+            <div class="text-[10px] text-yellow-500 font-tech mb-3 tracking-widest flex justify-between items-center">
+              <span>配准校正工具</span>
+              <span class="text-[9px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">RASTER TOOLS</span>
+            </div>
+
+            <!-- 1. 拖拽模式开关 (样式由JS动态控制) -->
+            <button id="btn-toggle-drag" class="w-full mb-3 text-xs py-2.5 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 border bg-white/5 border-white/20 text-gray-300 hover:bg-white/10">
+                <i class="fas fa-hand-paper"></i> <span>开启图片拖动模式</span>
+            </button>
+
+            <!-- 2. 微调与重置工具组 -->
+            <div class="grid grid-cols-3 gap-2 mb-3">
+              <button class="tech-btn py-1.5 rounded border border-white/10 hover:border-white/30" onclick="adjustOverlay('scale', 1.005)" title="放大 0.5%">
+                  <i class="fas fa-plus"></i> 放大
+              </button>
+              <button class="tech-btn py-1.5 rounded border border-white/10 hover:border-white/30" onclick="adjustOverlay('scale', 0.995)" title="缩小 0.5%">
+                  <i class="fas fa-minus"></i> 缩小
+              </button>
+              <button id="btn-reset-pos" class="tech-btn py-1.5 rounded border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/50" title="恢复默认位置">
+                  <i class="fas fa-undo"></i> 恢复
+              </button>
+            </div>
+
+            <!-- 3. 提示信息 -->
+            <p class="text-[9px] text-gray-500 text-center leading-relaxed">
+              <i class="fas fa-info-circle mr-1"></i>开启拖动模式后，直接拖拽地图即可调整位置。
+            </p>
+            
+            <!-- 4. 输出结果 -->
+            <button onclick="logOverlayBounds()" class="w-full mt-3 text-[10px] text-blue-400 hover:text-blue-300 border border-transparent hover:border-blue-900/50 py-1 rounded transition">
+              <i class="fas fa-code mr-1"></i> 输出校准后坐标
+            </button>
+          </div>
+
+          <!-- 朝代地图列表 (JS 动态生成) -->
+          <div id="overlay-list" class="space-y-2 mt-4">
+            <!-- JS 将在这里插入单选按钮 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 面板 C: 智能路线规划 -->
+<div class="map-panel hidden" id="panel-route">
+  <div class="map-panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
+    <span class="map-panel-title"><i class="fas fa-route text-green-400"></i>智能路线规划</span>
+    <i class="fas fa-chevron-down text-gray-500 transition-transform duration-300"></i>
+  </div>
+  <div class="map-panel-content">
+    <!-- 模式切换 -->
+    <div class="grid grid-cols-3 gap-1 mb-4 p-1 bg-black/20 rounded-lg">
+      <button class="tech-btn active text-[10px] py-1" data-route-mode="linear">
+          <i class="fas fa-ruler-horizontal block mb-1"></i>直线
+      </button>
+      <button class="tech-btn text-[10px] py-1" data-route-mode="road">
+          <i class="fas fa-car block mb-1"></i>驾车
+      </button>
+      <button class="tech-btn text-[10px] py-1" data-route-mode="ai">
+          <i class="fas fa-magic block mb-1"></i>AI
+      </button>
+    </div>
+    
+    <!-- 手动输入 -->
+    <div id="route-manual-inputs" class="space-y-3">
+      <div class="relative group">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-green-500 rounded-l"></div>
+          <select id="route-start" class="w-full bg-black/30 border border-white/10 rounded-r px-3 py-2 text-xs text-gray-300 outline-none focus:border-green-500 transition-colors">
+             <option value="">选择起点...</option>
+          </select>
+      </div>
+      <div class="flex justify-center -my-1 relative z-10">
+          <i class="fas fa-arrow-down text-gray-600 text-xs bg-[#0f141e] p-1 rounded-full border border-white/10"></i>
+      </div>
+      <div class="relative group">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-l"></div>
+          <select id="route-end" class="w-full bg-black/30 border border-white/10 rounded-r px-3 py-2 text-xs text-gray-300 outline-none focus:border-red-500 transition-colors">
+             <option value="">选择终点...</option>
+          </select>
+      </div>
+    </div>
+
+    <!-- AI 输入 (保持不变) -->
+    <div id="route-ai-inputs" class="hidden space-y-2">
+      <!-- ... -->
+    </div>
+
+    <!-- 按钮 -->
+    <button id="btn-calc-route" class="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs font-bold py-2.5 rounded shadow-lg transition-all flex items-center justify-center gap-2">
+      <i class="fas fa-location-arrow"></i> 开始导航
+    </button>
+    
+    <!-- 统计结果 (样式在 JS 中动态填充) -->
+    <div id="route-stats" class="mt-4 p-3 bg-gradient-to-br from-white/10 to-transparent rounded border border-white/5 hidden animate-fade-in">
+        <!-- JS 会填充这里 -->
+    </div>
+  </div>
+</div>
+
+      <!-- 面板 D: 分析工具面板 -->
+      <div class="map-panel hidden" id="panel-tools">
+        <div class="map-panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
+          <span class="map-panel-title"><i class="fas fa-chart-area text-red-400"></i>分析工具箱</span>
+          <i class="fas fa-chevron-down text-gray-500 transition-transform duration-300"></i>
+        </div>
+        <div class="map-panel-content">
+          <!-- 参数设置区域 -->
+          <div class="mb-3 px-1">
+             <label class="text-[10px] text-gray-500 font-tech tracking-widest block mb-1">缓冲半径 (KM)</label>
+             <input type="number" id="tool-buffer-radius" value="50" min="1" max="500" 
+                class="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-yellow-500 outline-none focus:border-yellow-500 font-mono">
+          </div>
+
+          <!-- 工具按钮网格 -->
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-tool-heat" class="tech-btn flex flex-col items-center gap-1 py-3" title="基于当前筛选数据生成热力图">
+              <i class="fas fa-fire text-orange-500 text-lg"></i>
+              <span>时空热力</span>
+            </button>
+            <button id="btn-tool-cluster" class="tech-btn flex flex-col items-center gap-1 py-3" title="基于当前筛选数据聚合点位">
+              <i class="fas fa-circle-nodes text-emerald-400 text-lg"></i>
+              <span>智能聚合</span>
+            </button>
+            <button id="btn-tool-buffer" class="tech-btn flex flex-col items-center gap-1 py-3" title="创建点位缓冲区">
+              <i class="fas fa-bullseye text-blue-400 text-lg"></i>
+              <span>缓冲区分析</span>
+            </button>
+            <button id="btn-tool-hull" class="tech-btn flex flex-col items-center gap-1 py-3" title="计算点位分布边界">
+              <i class="fas fa-draw-polygon text-purple-400 text-lg"></i>
+              <span>范围边界</span>
+            </button>
+          </div>
+
+          <button id="btn-tool-reset" class="w-full mt-3 border border-dashed border-gray-600 text-gray-400 text-xs py-1.5 rounded hover:text-white hover:border-gray-400 transition">
+            <i class="fas fa-undo mr-1"></i> 清除分析图层
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module">
+    import { initMapPage, toggleMapTheme, initDockSystem } from '../assets/js/map.js';
+    
+    // 全局跳转函数
+    window.openIPDetail = (id) => {
+        window.location.href = `ip.html?id=${id}`;
+    };
+
+    // 初始化地图与Dock系统
+    initMapPage();
+    initDockSystem();
+
+    // 绑定主题切换按钮 (Dock上的按钮)
+    const themeBtn = document.getElementById('dock-theme-btn');
+    if(themeBtn) {
+        themeBtn.onclick = () => {
+            const isDark = toggleMapTheme();
+            // 切换图标
+            themeBtn.innerHTML = isDark 
+                ? '<i class="fas fa-moon"></i>' 
+                : '<i class="fas fa-sun text-yellow-500"></i>';
+        }
+    }
+  </script>
+</body>
+</html>

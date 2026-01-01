@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文化星云 | 星云漫游</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome - 使用备用 CDN，减少跟踪阻止警告 -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" onerror="this.onerror=null;this.href='https://use.fontawesome.com/releases/v6.4.0/css/all.css';this.rel='stylesheet';" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <video class="input_video"></video>
+    <div id="intro-flash" class="fixed inset-0 bg-white opacity-0 pointer-events-none z-[55]" style="mix-blend-mode: screen;"></div>
+  
+  <div id="ai-status">
+    <div id="gesture-feedback" class="ai-feedback" style="display: none;">识别手势: 1 - 唐代</div>
+    <div class="ai-badge">
+      <div class="pulse-dot"></div>
+      <span>AI GESTURE ACTIVE</span>
+    </div>
+  </div>
+                                                                                                                                      
+  <div id="ui-layer">
+    <nav class="fixed top-0 w-full z-50 border-b border-white/10 bg-black/40 backdrop-blur-md interactive">
+      <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <a href="./home.html" class="flex items-center gap-3" id="nav-reset">
+          <i class="fas fa-solar-system text-yellow-500 animate-spin-slow" style="animation-duration: 10s"></i>
+          <span class="font-serif-sc text-xl font-bold tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-yellow-100 to-yellow-600">文化星云</span>
+        </a>
+        <div class="hidden md:flex items-center gap-6">
+          <!-- 搜索栏 -->
+          <div id="search-container" class="relative">
+            <input 
+              type="text" 
+              id="search-input" 
+              placeholder="搜索文化实体..." 
+              class="bg-black/40 border border-white/20 text-white text-sm px-4 py-2 pl-10 rounded-lg focus:outline-none focus:border-yellow-400 w-80 transition-all"
+            />
+            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <!-- 搜索结果下拉框 -->
+            <div id="search-results" class="custom-scrollbar absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl max-h-96 overflow-y-auto hidden z-50"></div>
+            <!-- 热点推送 -->
+          <div id="hot-items" class="custom-scrollbar absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-yellow-500/30 rounded-lg shadow-2xl p-4 max-h-96 overflow-y-auto hidden z-50">
+            <div id="hot-items-list" class="space-y-2"></div>
+          </div>
+          </div>
+          <div class="flex space-x-8">
+            <a href="./home.html" class="text-sm text-yellow-400 font-serif-sc tracking-wider">星云 · 漫游</a>
+            <a href="./map.html" class="text-sm text-gray-300 hover:text-yellow-400 transition font-serif-sc tracking-wider">地图 · 舆图</a>
+            <a href="./user.html" class="text-sm text-gray-300 hover:text-yellow-400 transition font-serif-sc tracking-wider">我的 · 空间</a>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <select id="cluster-mode" class="bg-black/40 border border-white/20 text-yellow-300 text-xs px-3 py-2 rounded-lg focus:outline-none focus:border-yellow-400">
+            <option value="dynasty">按朝代</option>
+            <option value="type">按类型</option>
+          </select>
+          <button id="btn-camera" class="border border-blue-500/50 text-blue-400 px-3 py-1 rounded-full text-[12px] font-tech hover:bg-blue-500/20 transition flex items-center gap-2">
+            <i class="fas fa-hand-sparkles"></i> 开启手势控制
+          </button>
+          <a href="./user.html" class="w-10 h-10 rounded-full border-2 border-yellow-500/50 cursor-pointer overflow-hidden relative group interactive ml-4 hover:scale-110 transition shadow-[0_0_10px_rgba(212,175,55,0.3)]">
+            <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" alt="User" class="w-full h-full object-cover">
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <section class="page-section active flex flex-col justify-center items-center h-full">
+      <div id="home-content" class="text-center z-10 transition-opacity duration-500 cursor-pointer pointer-events-auto" style="margin-top: -100px;" title="点击隐藏文字"></div>
+      <div id="back-btn" class="absolute bottom-10 opacity-0 transition-all duration-500 interactive transform translate-y-10">
+        <button class="glass-panel px-8 py-3 rounded-full text-yellow-500 hover:bg-white/10 hover:scale-105 transition flex items-center gap-3">
+          <i class="fas fa-arrow-up"></i> 返回星系全景
+        </button>
+      </div>
+
+      <!-- 星球预览弹窗 -->
+      <div id="preview-panel" class="fixed right-4 md:right-10 bottom-28 md:bottom-16 z-50 max-w-sm w-[90vw] md:w-96 glass-panel border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl p-6 text-white hidden pointer-events-none">
+        <div class="flex justify-between items-start gap-3">
+          <div>
+            <div id="preview-title" class="text-2xl font-serif-sc font-bold leading-tight"></div>
+            <div id="preview-dynasty" class="text-xs font-tech tracking-[0.3em] text-yellow-300 mt-2"></div>
+          </div>
+          <button id="preview-close" class="text-gray-400 hover:text-white transition">
+            <i class="fas fa-times"></i>
+      </button>
+        </div>
+        <p id="preview-desc" class="text-sm text-gray-200 mt-4 leading-relaxed max-h-28 overflow-y-auto"></p>
+        <div class="mt-6 flex gap-3">
+          <button id="preview-exit" class="flex-1 glass-panel px-3 py-2 rounded-lg text-cyan-300 border border-cyan-500/40 hover:bg-white/10 transition">退出聚焦</button>
+          <button id="preview-open-ip" class="flex-1 glass-panel px-3 py-2 rounded-lg text-yellow-300 border border-yellow-500/40 hover:bg-white/10 transition">进入 IP 界面</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-ip" class="page-section h-full flex items-center justify-center px-4 md:px-20">
+      <div class="interactive-area w-full max-w-6xl h-[80vh] glass-panel rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-white/5 relative">
+        <button class="absolute top-6 right-6 z-20 text-white/50 hover:text-white transition text-2xl" id="ip-close"><i class="fas fa-times"></i></button>
+        <div class="md:w-5/12 bg-black/40 relative flex flex-col items-center justify-center p-12 text-center border-r border-white/5">
+          <i id="ip-icon" class="fas fa-landmark text-8xl text-yellow-500/80 mb-8 drop-shadow-[0_0_30px_rgba(212,175,55,0.4)] relative z-10"></i>
+          <div id="ip-3d-container" class="absolute inset-0 z-10 hidden cursor-move"></div>
+          <div id="ip-3d-loading" class="absolute inset-0 z-20 hidden flex items-center justify-center text-xs text-yellow-500 font-tech">LOADING...</div>
+          <button id="btn-toggle-rotate" class="absolute bottom-6 right-6 z-30 glass-panel w-10 h-10 rounded-full flex items-center justify-center text-yellow-500 hover:bg-white/20 transition hidden cursor-pointer shadow-[0_0_15px_rgba(212,175,55,0.5)] border border-yellow-500/50" title="暂停/开启旋转">
+            <i id="icon-rotate" class="fas fa-pause"></i>
+          </button>
+          <h2 id="ip-title" class="text-5xl font-serif-sc font-bold text-white mb-4 relative z-20 pointer-events-none">标题</h2>
+          <div id="ip-dynasty" class="text-xs font-tech text-yellow-500 tracking-[0.4em] border border-yellow-500/30 px-3 py-1 rounded relative z-20 pointer-events-none">DYNASTY</div>
+        </div>
+        <div class="md:w-7/12 p-12 overflow-y-auto bg-black/60 backdrop-blur-xl">
+          <p id="ip-desc" class="text-gray-300 text-lg leading-loose font-serif-sc text-justify">描述...</p>
+          <div id="ip-tags" class="mt-4 flex flex-wrap gap-2 text-xs text-yellow-400"></div>
+          <div id="ip-meta" class="mt-4 text-sm text-gray-300 leading-6"></div>
+          <div id="ip-detail" class="mt-6 text-sm text-gray-200 leading-7"></div>
+          <div class="mt-8 pt-8 border-t border-white/10 flex justify-between">
+            <div class="text-xs text-gray-500">经纬度坐标: <span id="ip-coords" class="text-blue-400 ml-2"></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // 过滤控制台中的跟踪阻止警告（不影响功能，只是浏览器隐私设置）
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    
+    console.warn = function(...args) {
+      const message = args.join(' ');
+      if (message.includes('Tracking Prevention') || message.includes('blocked access to storage')) {
+        // 静默处理跟踪阻止警告
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+    
+    console.error = function(...args) {
+      const message = args.join(' ');
+      if (message.includes('Tracking Prevention') || message.includes('blocked access to storage')) {
+        // 静默处理跟踪阻止警告
+        return;
+      }
+      originalError.apply(console, args);
+    };
+  </script>
+  
+  <script type="module">
+    // 全局错误处理：捕获浏览器扩展导致的消息通道错误（不影响功能）
+    window.addEventListener('error', (event) => {
+      if (event.message && event.message.includes('message channel closed')) {
+        // 这是浏览器扩展导致的错误，可以忽略
+        event.preventDefault();
+        return false;
+      }
+      // 过滤跟踪阻止相关的错误
+      if (event.message && event.message.includes('Tracking Prevention')) {
+        event.preventDefault();
+        return false;
+      }
+    });
+    
+    // 捕获未处理的 Promise 拒绝（包括消息通道错误）
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event.reason && event.reason.message && event.reason.message.includes('message channel closed')) {
+        // 这是浏览器扩展导致的错误，可以忽略
+        event.preventDefault();
+        return false;
+      }
+      // 过滤跟踪阻止相关的错误
+      if (event.reason && event.reason.message && event.reason.message.includes('Tracking Prevention')) {
+        event.preventDefault();
+        return false;
+      }
+    });
+    
+    import { initHome, resetView, openIPDetail, toggle3DRotation, toggleCamera, exitNodeFocus } from '../assets/js/home.js';
+
+    const searchResults = document.getElementById('search-results');
+    searchResults.addEventListener('wheel', (event) => {
+      event.stopPropagation();
+    });
+    window.openIPDetail = openIPDetail;
+    window.toggleCamera = toggleCamera;
+    document.getElementById('back-btn').onclick = resetView;
+    document.getElementById('nav-reset').onclick = resetView;
+    document.getElementById('home-content').onclick = () => (document.getElementById('home-content').style.opacity = '0');
+    document.getElementById('ip-close').onclick = resetView;
+    document.getElementById('btn-toggle-rotate').onclick = toggle3DRotation;
+    document.getElementById('btn-camera').onclick = toggleCamera;
+    initHome();
+  </script>
+</body>
+</html>
+

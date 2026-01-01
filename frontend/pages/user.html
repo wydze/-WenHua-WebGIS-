@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文化星云 | 用户中心</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+
+  <style>
+    /* --- 🌌 升级版：三层星空背景 --- */
+    .star-bg {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+      z-index: -1; overflow: hidden; pointer-events: none;
+    }
+    .star {
+      position: absolute; border-radius: 50%; background: white;
+      opacity: 0; animation: twinkle ease-in-out infinite;
+    }
+    /* 远景微尘 */
+    .star-sm { width: 1px; height: 1px; background: #aab; }
+    /* 中景繁星 */
+    .star-md { width: 2px; height: 2px; background: #ccd; box-shadow: 0 0 2px rgba(255,255,255,0.3); }
+    /* 前景亮星 */
+    .star-lg { width: 3px; height: 3px; background: #fff; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
+
+    @keyframes twinkle {
+      0% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: var(--max-opacity); transform: scale(1.2); }
+      100% { opacity: 0.2; transform: scale(0.8); }
+    }
+    
+    /* --- 🗺️ 地图美化 --- */
+    #footprint-map { width: 100%; height: 100%; background: transparent; z-index: 1; }
+    
+    /* 呼吸灯光点 */
+    .glowing-icon {
+      background-color: #ffd700; border-radius: 50%;
+      box-shadow: 0 0 8px #ffd700, 0 0 20px #ff8c00;
+      animation: pulse-glow 2s infinite;
+    }
+    @keyframes pulse-glow {
+      0% { box-shadow: 0 0 5px #ffd700, 0 0 10px #ff4500; transform: scale(1); }
+      50% { box-shadow: 0 0 15px #ffd700, 0 0 25px #ff4500; transform: scale(1.2); }
+      100% { box-shadow: 0 0 5px #ffd700, 0 0 10px #ff4500; transform: scale(1); }
+    }
+
+    /* 地图弹窗自定义样式 */
+    .leaflet-popup-content-wrapper {
+      background: rgba(10, 10, 20, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      border-radius: 8px;
+      color: #eee;
+      font-family: "Noto Serif SC", serif;
+    }
+    .leaflet-popup-tip { background: rgba(10, 10, 20, 0.9); border: 1px solid rgba(255, 215, 0, 0.3); border-top: none; border-left: none;}
+    .leaflet-container a.leaflet-popup-close-button { color: #888; }
+  </style>
+</head>
+
+<body class="page-shell text-gray-200">
+  
+  <div id="star-container" class="star-bg"></div>
+
+  <nav class="fixed top-0 w-full z-50 border-b border-white/10 bg-black/40 backdrop-blur-md interactive">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="./home.html" class="flex items-center gap-3">
+        <i class="fas fa-solar-system text-yellow-500 animate-spin-slow" style="animation-duration: 10s"></i>
+        <span class="font-serif-sc text-xl font-bold tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-yellow-100 to-yellow-600">文化星云</span>
+      </a>
+      <div class="hidden md:flex space-x-8">
+        <a href="./home.html" class="text-sm text-gray-300 hover:text-yellow-400 transition font-serif-sc tracking-wider">星云 · 漫游</a>
+        <a href="./map.html" class="text-sm text-gray-300 hover:text-yellow-400 transition font-serif-sc tracking-wider">地图 · 舆图</a>
+        <a href="./user.html" class="text-sm text-yellow-400 font-serif-sc tracking-wider">我的 · 空间</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="section-shell pt-24 h-full px-4 flex justify-center pb-20">
+    <div class="interactive-area max-w-5xl w-full space-y-6"> <div class="glass-panel rounded-2xl p-8 flex items-center gap-6 relative border border-white/10 shadow-2xl bg-black/40 backdrop-blur-md">
+        <div class="w-20 h-20 rounded-full border-2 border-yellow-500 bg-gray-800 flex items-center justify-center overflow-hidden">
+          <img id="user-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Avatar" class="w-full h-full object-cover" />
+        </div>
+        
+        <div id="user-info-guest">
+          <h2 class="text-2xl font-serif-sc font-bold">游客访客</h2>
+          <div class="text-xs text-gray-400 mt-1">登录以解锁更多功能</div>
+          <button id="btn-login" class="mt-2 px-4 py-1 bg-blue-600/50 border border-blue-400 rounded text-xs hover:bg-blue-600 transition pointer-events-auto">立即登录</button>
+        </div>
+        
+        <div id="user-info-logged" class="hidden">
+          <h2 id="user-name-display" class="text-2xl font-serif-sc font-bold">用户名</h2>
+          <div id="user-role-badge" class="text-xs text-yellow-500 font-tech mt-1 border border-yellow-500/30 px-2 py-0.5 rounded inline-block">ROLE</div>
+          <button id="btn-logout" class="ml-4 text-xs text-red-400 hover:underline pointer-events-auto">退出登录</button>
+        </div>
+      </div>
+
+      <div id="footprint-section" class="glass-panel rounded-2xl border border-yellow-500/20 shadow-lg hidden overflow-hidden relative group h-96 flex">
+        <div class="flex-1 relative h-full">
+            <div id="footprint-map" class="w-full h-full"></div>
+            <div class="absolute top-4 left-4 z-[400] bg-black/70 backdrop-blur px-4 py-2 rounded border-l-4 border-yellow-500 pointer-events-none">
+                <h3 class="font-serif-sc font-bold text-yellow-500">探索轨迹 · JOURNEY</h3>
+                <div class="text-[10px] text-gray-400 mt-1">已点亮 <span id="visit-count" class="text-white font-bold text-base mx-1">0</span> 处文化坐标</div>
+            </div>
+        </div>
+      
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="glass-panel p-6 rounded-xl h-36 flex flex-col items-center justify-center opacity-70 border border-white/5">
+          <i class="fas fa-medal text-4xl text-yellow-500 mb-4"></i>
+          <div class="font-bold">勋章墙</div>
+          <div class="text-xs text-gray-400 mt-2">敬请期待</div>
+        </div>
+        <div id="btn-create" class="glass-panel p-6 rounded-xl h-36 flex flex-col items-center justify-center opacity-70 cursor-pointer hover:opacity-100 hover:scale-105 transition hover:bg-white/10 hover:border-yellow-500/30 border border-transparent">
+          <i class="fas fa-scroll text-4xl text-blue-400 mb-4"></i>
+          <div class="font-bold">创作中心</div>
+          <div class="text-xs text-gray-400 mt-2">点击提交新的文化IP</div>
+        </div>
+      </div>
+
+      <div id="admin-panel" class="hidden mt-6">
+        <h3 class="text-yellow-500 font-serif-sc mb-3 border-l-4 border-yellow-500 pl-3">内部审核工作台</h3>
+        <div class="glass-panel p-4 rounded-xl border border-yellow-500/30">
+          <div class="flex justify-between items-center mb-4 pb-2 border-b border-white/10">
+            <span class="text-xs text-gray-400">待审核队列</span>
+          </div>
+          <div id="audit-list-container" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar"></div>
+          <div id="audit-empty" class="hidden text-center text-gray-500 py-4 text-xs">
+            <i class="fas fa-check-circle text-green-500 mb-1 block text-xl"></i>
+            所有内容已审核完毕
+          </div>
+        </div>
+      </div>
+
+      <div id="history-card" class="glass-panel p-6 rounded-xl mt-4 relative overflow-hidden group hover:bg-white/10 transition border border-white/10 pointer-events-auto cursor-pointer">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-500/30 transition"></div>
+        <div class="flex items-center justify-between relative z-10">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-blue-400">
+              <i class="fas fa-history text-xl"></i>
+            </div>
+            <div>
+              <div class="text-xs text-gray-400 font-tech uppercase tracking-wider">最近访问</div>
+              <div id="history-content" class="text-lg font-serif-sc font-bold text-white mt-1">暂无访问记录</div>
+            </div>
+          </div>
+          <i class="fas fa-chevron-right text-gray-500 group-hover:text-white group-hover:translate-x-1 transition"></i>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="login-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden pointer-events-auto">
+    <div class="glass-panel w-96 p-8 rounded-2xl border border-white/20 shadow-2xl">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-serif-sc font-bold text-white">身份认证</h3>
+        <button id="modal-close" class="text-gray-400 hover:text-white pointer-events-auto"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1 font-tech">USERNAME</label>
+          <input type="text" id="login-user" class="w-full bg-black/50 border border-white/10 rounded p-2 text-white focus:border-yellow-500 outline-none transition pointer-events-auto" placeholder="user / admin" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1 font-tech">PASSWORD</label>
+          <input type="password" id="login-pass" class="w-full bg-black/50 border border-white/10 rounded p-2 text-white focus:border-yellow-500 outline-none transition pointer-events-auto" placeholder="123456 / admin888" />
+        </div>
+        <div class="text-[10px] text-gray-500">测试账号: 普通用户(user/123456) | 管理员(admin/admin888)</div>
+        <button id="modal-login" class="w-full py-3 bg-gradient-to-r from-yellow-700 to-yellow-500 text-black font-bold rounded hover:scale-105 transition shadow-lg pointer-events-auto">登 录</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="create-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md hidden transition-all duration-300">
+    <div class="glass-panel w-full max-w-lg p-8 rounded-2xl border border-yellow-500/30 shadow-[0_0_50px_rgba(255,215,0,0.1)] relative">
+      <button id="create-close" class="absolute top-4 right-4 text-gray-500 hover:text-white transition pointer-events-auto">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+      <h3 class="text-2xl font-serif-sc font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-600 mb-6 border-l-4 border-yellow-500 pl-4">提交文化·IP</h3>
+      <div class="space-y-4 font-tech">
+        <div>
+          <label class="text-xs text-yellow-500/80 block mb-1 tracking-wider">ENTITY NAME</label>
+          <input type="text" id="input-name" class="w-full bg-black/40 border border-white/10 rounded p-3 text-white focus:border-yellow-500 focus:bg-white/5 outline-none transition pointer-events-auto" placeholder="例如：应县木塔" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs text-yellow-500/80 block mb-1 tracking-wider">TYPE</label>
+            <select id="input-type" class="w-full bg-black/40 border border-white/10 rounded p-3 text-gray-300 focus:border-yellow-500 outline-none appearance-none pointer-events-auto">
+              <option value="site">遗址 (Site)</option>
+              <option value="person">人物 (Person)</option>
+              <option value="event">事件 (Event)</option>
+              <option value="artifact">器物 (Artifact)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-yellow-500/80 block mb-1 tracking-wider">DYNASTY</label>
+            <select id="input-dynasty" class="w-full bg-black/40 border border-white/10 rounded p-3 text-gray-300 focus:border-yellow-500 outline-none appearance-none pointer-events-auto">
+              <option value="20">唐代</option>
+              <option value="23">宋代</option>
+              <option value="27">元代</option>
+              <option value="28">明代</option>
+              <option value="29">清代</option>
+              <option value="99">其他</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-yellow-500/80 block mb-1 tracking-wider">DESCRIPTION</label>
+          <textarea id="input-desc" rows="3" class="w-full bg-black/40 border border-white/10 rounded p-3 text-white focus:border-yellow-500 outline-none transition pointer-events-auto" placeholder="请输入简要描述..."></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">LATITUDE (N)</label>
+            <input type="number" id="input-lat" step="0.0001" class="w-full bg-black/40 border border-white/10 rounded p-2 text-white outline-none pointer-events-auto" placeholder="34.0000" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">LONGITUDE (E)</label>
+            <input type="number" id="input-lng" step="0.0001" class="w-full bg-black/40 border border-white/10 rounded p-2 text-white outline-none pointer-events-auto" placeholder="108.0000" />
+          </div>
+        </div>
+        <button id="btn-submit-form" class="w-full py-3 mt-4 bg-gradient-to-r from-yellow-700/80 to-yellow-500/80 border border-yellow-500 text-white font-bold rounded hover:scale-[1.02] hover:brightness-110 transition shadow-[0_0_20px_rgba(212,175,55,0.3)] pointer-events-auto">
+          <i class="fas fa-paper-plane mr-2"></i> 提交审核
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initUserPage, generateStars } from '../assets/js/user.js';
+    import { openIPDetail } from '../assets/js/home.js';
+    window.openIPDetail = openIPDetail;
+    document.getElementById('history-card').onclick = () => {
+      const lastDataStr = localStorage.getItem('lastVisitedIP');
+      if (lastDataStr) openIPDetail(JSON.parse(lastDataStr));
+      else alert('暂无历史记录，快去星云里探索吧！');
+    };
+    initUserPage();
+    generateStars(); // ✨ 启动星空
+  </script>
+</body>
+</html>

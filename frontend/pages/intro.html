@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文化星云 | 欢迎</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+      background-attachment: fixed;
+    }
+    .intro-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(153, 50, 204, 0.1) 0%, transparent 50%);
+      z-index: 1;
+    }
+    .intro-content {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .fade-in-up {
+      animation: fadeInUp 1s ease-out;
+    }
+    .fade-in-up-delay {
+      animation: fadeInUp 1s ease-out 0.3s both;
+    }
+  </style>
+</head>
+<body>
+  <div class="intro-background"></div>
+  
+  <!-- 开场字幕与进入按钮 -->
+  <div class="intro-content bg-black/95 text-white flex flex-col items-center justify-center gap-10 px-6">
+    <div class="text-center space-y-3 max-w-3xl fade-in-up">
+      <div class="inline-block px-3 py-1 border border-yellow-500/30 rounded text-yellow-500 text-xs tracking-[0.3em] bg-black/50 backdrop-blur" style="font-family: 'Orbitron', sans-serif;">
+        WEBGIS · GALAXY
+      </div>
+      <h1 class="text-4xl md:text-6xl font-bold" style="font-family: 'Noto Serif SC', serif;">
+        融汇时空智慧<br />
+        <span class="text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-800">中华文明</span>
+      </h1>
+      <p class="text-blue-300 text-xl font-bold" style="font-family: 'Noto Serif SC', serif;">自由探索 · 星际漫游</p>
+    </div>
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 fade-in-up-delay">
+      <button id="intro-start" class="glass-panel px-8 py-3 rounded-full text-yellow-300 border border-yellow-500/40 hover:bg-white/10 transition flex items-center gap-3 text-lg">
+        <i class="fas fa-play"></i> 进入星云
+      </button>
+      <button id="intro-to-map" class="glass-panel px-8 py-3 rounded-full text-cyan-200 border border-cyan-400/40 hover:bg-white/10 transition flex items-center gap-3 text-lg">
+        <i class="fas fa-map"></i> 进入地图
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 资源加载错误处理
+    window.addEventListener('error', function(e) {
+      if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+        console.warn('资源加载失败:', e.target.src || e.target.href);
+        // 对于非关键资源，继续执行
+        if (e.target.tagName === 'LINK' && e.target.rel === 'stylesheet') {
+          // CSS加载失败，使用内联样式作为备用
+          console.warn('CSS加载失败，使用备用样式');
+        }
+      }
+    }, true);
+
+    // 记录用户已经看过开场
+    const INTRO_SEEN_KEY = 'introSeen';
+    
+    // 确保页面内容可见
+    console.log('开场页面加载中...');
+    
+    // 等待 DOM 加载完成
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM 加载完成');
+      
+      const introStartBtn = document.getElementById('intro-start');
+      const introContent = document.querySelector('.intro-content');
+      
+      // 确保内容可见
+      if (introContent) {
+        introContent.style.display = 'flex';
+        introContent.style.opacity = '1';
+        console.log('开场内容已显示');
+      }
+      
+      const introToMapBtn = document.getElementById('intro-to-map');
+
+      if (introStartBtn) {
+        console.log('按钮已找到：进入星云');
+        introStartBtn.addEventListener('click', function() {
+          console.log('点击进入星云');
+          // 记录用户已经看过开场
+          localStorage.setItem(INTRO_SEEN_KEY, 'true');
+          
+          // 设置标记，表示从开场页面进入，需要播放入场动画
+          sessionStorage.setItem('fromIntro', 'true');
+          
+          // 跳转到星云界面
+          window.location.href = './home.html';
+        });
+      } else {
+        console.error('未找到进入星云按钮');
+      }
+
+      if (introToMapBtn) {
+        console.log('按钮已找到：进入地图');
+        introToMapBtn.addEventListener('click', function() {
+          console.log('点击进入地图');
+          // 记录用户已经看过开场
+          localStorage.setItem(INTRO_SEEN_KEY, 'true');
+
+          // 从开场进入地图，一般不需要 home 的入场动画；如需也可保留该标记
+          sessionStorage.removeItem('fromIntro');
+
+          // 直接跳转到地图页面
+          window.location.href = './map.html';
+        });
+      } else {
+        console.error('未找到进入地图按钮');
+      }
+    });
+    
+    // 如果 DOM 已经加载完成，立即执行
+    if (document.readyState === 'loading') {
+      // DOM 还在加载中，等待 DOMContentLoaded
+    } else {
+      // DOM 已经加载完成，立即执行
+      const introContent = document.querySelector('.intro-content');
+      if (introContent) {
+        introContent.style.display = 'flex';
+        introContent.style.opacity = '1';
+      }
+    }
+  </script>
+</body>
+</html>
+

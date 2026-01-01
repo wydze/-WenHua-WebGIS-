@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文化实体详情</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <!-- 引入 model-viewer 用于 3D 展示 -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+</head>
+<body class="bg-black text-gray-300 font-serif-sc ip-details-page">
+
+  <!-- 顶部导航栏（与其他页面统一风格） -->
+  <nav class="fixed top-0 w-full z-50 border-b border-white/10 bg-black/40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="./home.html" class="flex items-center gap-3" id="nav-reset">
+        <i class="fas fa-solar-system text-yellow-500 animate-spin-slow" style="animation-duration: 10s"></i>
+        <span class="font-serif-sc text-xl font-bold tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-yellow-100 to-yellow-600">文化星云</span>
+      </a>
+
+      <div class="hidden md:flex items-center gap-6">
+        <div class="flex space-x-8">
+          <a href="./home.html" class="text-sm text-gray-300 hover:text-yellow-400 transition font-serif-sc tracking-wider">星云 · 漫游</a>
+          <a href="./map.html" class="text-sm text-gray-300 hover:text-yellow-400 transition font-serif-sc tracking-wider">地图 · 舆图</a>
+          <a href="./user.html" class="text-sm text-gray-300 hover:text-yellow-400 transition font-serif-sc tracking-wider">我的 · 空间</a>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <a href="./user.html" class="w-10 h-10 rounded-full border-2 border-yellow-500/50 cursor-pointer overflow-hidden relative group hover:scale-110 transition shadow-[0_0_10px_rgba(212,175,55,0.3)]">
+          <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80" alt="User" class="w-full h-full object-cover">
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 返回按钮（保留，避免用户迷路） -->
+  <a href="home.html" class="fixed top-[76px] left-6 z-50 flex items-center gap-2 text-gray-400 hover:text-white transition-colors duration-300 group">
+    <i class="fas fa-arrow-left text-sm transition-transform duration-300 group-hover:-translate-x-1"></i>
+    <span class="text-sm">返回星云</span>
+  </a>
+
+  <div id="loading-indicator" class="fixed inset-0 flex items-center justify-center bg-black z-50">
+    <div class="text-center">
+        <i class="fas fa-spinner fa-spin text-4xl text-yellow-500"></i>
+        <p class="mt-4 text-gray-400">正在加载...</p>
+    </div>
+  </div>
+
+  <main id="ip-content" class="container mx-auto px-6 py-24 pt-28 opacity-0 transition-opacity duration-1000">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <!-- 左侧信息栏 -->
+      <div class="lg:col-span-1 flex flex-col gap-8">
+        <div class="flex flex-col items-center text-center">
+        <!-- 给 Icon 容器添加了 ID，便于 JS 中替换为 3D 模型 -->
+        <div id="ip-icon-container" class="w-48 h-48 bg-black/50 rounded-full flex items-center justify-center border-2 border-yellow-500/30 shadow-lg mb-6 relative overflow-hidden">
+          <i id="ip-icon" class="fas fa-landmark text-7xl text-yellow-500"></i>
+        </div>
+        <h1 id="ip-title" class="text-5xl font-bold text-white mb-3"></h1>
+        <div id="ip-dynasty" class="text-lg text-yellow-400 mb-4"></div>
+        <div id="ip-type-badge" class="px-4 py-1 border border-blue-400/50 text-blue-300 rounded-full text-sm"></div>
+        <div id="ip-tags" class="mt-6 flex flex-wrap justify-center gap-2"></div>
+        </div>
+
+        <!-- 地图/图片容器 -->
+        <!-- relative 用于定位内部的切换按钮和绝对定位的图片 -->
+        <div id="map-container" class="w-full h-80 bg-black/20 rounded-lg border border-white/10 relative mt-4 overflow-hidden">
+          <div id="ip-map" class="w-full h-full relative z-10"></div>
+          <!-- 图片将通过 JS 动态插入到这里 -->
+        </div>
+
+      </div>
+
+      <!-- 右侧详情栏 -->
+      <div class="lg:col-span-2 custom-scrollbar pr-4">
+        <!-- 描述 -->
+        <section>
+          <p id="ip-desc" class="text-lg leading-relaxed text-justify"></p>
+        </section>
+
+        <!-- 信息 -->
+        <section id="ip-info-section" class="mt-10 pt-8 border-t border-white/10"></section>
+        
+        <!-- 知识图谱信息 -->
+        <section id="ip-kg-section" class="mt-10 pt-8 border-t border-white/10">
+          <h2 class="section-title">知识图谱</h2>
+          <div id="kg-graph" class="w-full h-96 bg-black/20 rounded-lg border border-white/10 relative"></div>
+        </section>
+
+        <!-- 底部信息 -->
+        <footer class="mt-12 pt-6 border-t border-white/10 text-sm text-gray-500 flex justify-between">
+          <div id="ip-coords"></div>
+          <div id="ip-created-at"></div>
+        </footer>
+      </div>
+    </div>
+  </main>
+
+  <script src="//unpkg.com/force-graph"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" src="../assets/js/ip.js"></script>
+</body>
+</html>
